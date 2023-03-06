@@ -12,9 +12,13 @@ describe MessageFormat do
       expect { MessageFormat.new('sub with no selector { a, select, {hi} }') }.to raise_error
       expect { MessageFormat.new('sub with no other { a, select, foo {hi} }') }.to raise_error
       expect { MessageFormat.new('wrong escape \\{') }.to raise_error
-      expect { MessageFormat.new('wrong escape \'{\'', 'en', { escape: '\\' }) }.to raise_error
+      expect { MessageFormat.new("wrong escape \'{\'', 'en', { escape: '\\' }") }.to raise_error
       expect { MessageFormat.new('bad arg type { a, bogus, nope }') }.to raise_error
       expect { MessageFormat.new('bad arg separator { a bogus, nope }') }.to raise_error
+      expect { MessageFormat.new('unclosed tag <a>Tag') }.to raise_error
+      expect { MessageFormat.new('un matching tag </a>Tag') }.to raise_error
+      expect { MessageFormat.new('nested un matching tag <a>Tag</B></a>') }.to raise_error
+      expect { MessageFormat.new('mis matched tags <a>Tag</b>') }.to raise_error
     end
   end
 
@@ -24,6 +28,25 @@ describe MessageFormat do
       message = MessageFormat.new(pattern, 'en-US').format()
 
       expect(message).to eql('Simple string with nothing special')
+    end
+
+    it 'formats tags' do
+      pattern = 'Simple string with <A>tags</A>'
+      message = MessageFormat.new(pattern, 'en-US').format({ A: lambda { |content| "<a href=\"https://google.com\">#{content}</a>" } })
+
+      expect(message).to eql('Simple string with <a href="https://google.com">tags</a>')
+    end
+
+    it 'formats nested tags' do 
+      pattern = 'Simple string with <A>tags<B>This is nested</B></A>'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        { 
+          A: lambda { |content| "<a href=\"https://google.com\">#{content}</a>" },
+          B: lambda { |content| "<b>#{content}</b>" }
+        }
+      )
+
+      expect(message).to eql('Simple string with <a href="https://google.com">tags<b>This is nested</b></a>')
     end
 
     it 'handles pattern with escaped text' do
@@ -42,7 +65,7 @@ describe MessageFormat do
 
     it 'formats numbers, dates, and times' do
       pattern = '{ n, number } : { d, date, short } { d, time, short }'
-      message = MessageFormat.new(pattern, 'en-US').format({ :n => 0, :d => DateTime.new(0) })
+      message = MessageFormat.new(pattern, 'en-US').format({ :n => 0, :d => DateTime.new })
 
       expect(message).to match(/^0 \: \d\d?\/\d\d?\/\d{2,4} \d\d?\:\d\d [AP]M$/)
     end
