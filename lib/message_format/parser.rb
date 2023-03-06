@@ -130,9 +130,9 @@ module MessageFormat
       count = 0
       while @index < @length && @pattern[@index] != '>'
         if @pattern[@index] == '/' && @pattern[@index + 1] == '>'
-          tag_attributes = @pattern[@index - count..@index]
+          tag_attributes = @pattern[@index - count..@index - 1]
           @index += 2
-          return ["<#{id} #{tag_attributes}/>"]
+          return [id, 'self-closing-tag', [tag_attributes]]
         end
   
         @index += 1

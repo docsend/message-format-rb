@@ -96,6 +96,8 @@ module MessageFormat
       case type
         when 'tag'
           interpret_tag(id, type, style[0], style[1], parent)
+        when 'self-closing-tag'
+          interpret_self_closing_tag(id, style[0])
         when 'number'
           interpret_number(id, offset, style)
         when 'date', 'time'
@@ -113,15 +115,22 @@ module MessageFormat
       end
     end
 
-    def interpret_tag ( id, type, text, elements, parent )
+    def interpret_tag ( id, type, attributes, elements, parent )
       elements = elements.map do |element|
         interpret_element(element, parent)
       end
 
       lambda do |args|
+        unless args
+          args = {}
+        end
+
         unless args[id]
           args[id] = lambda do |content|
-            "<#{id} #{text}>#{content}</#{id}>"
+            result = "<#{id}"
+            result += " #{attributes}" unless attributes.empty?
+            result += ">#{content}</#{id}>"
+            result
           end
         end
 
@@ -134,6 +143,25 @@ module MessageFormat
             elements.map { |element| element.call(nested) }.join ''
           end).call(args)
         )
+      end
+    end
+
+    def interpret_self_closing_tag (id, attributes)
+      lambda do |args|
+        unless args
+          args = {}
+        end
+
+        unless args[id]
+          args[id] = lambda do
+            result = "<#{id}"
+            result += " #{attributes}" unless attributes.empty?
+            result += ' />'
+            result
+          end
+        end
+
+        args[id].call
       end
     end
 

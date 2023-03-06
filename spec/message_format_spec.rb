@@ -37,6 +37,20 @@ describe MessageFormat do
       expect(message).to eql('Simple string with <a href="https://google.com">tags</a>')
     end
 
+    it 'defaults when no arg provided' do
+      pattern = 'Simple string with <A>tags</A>'
+      message = MessageFormat.new(pattern, 'en-US').format()
+
+      expect(message).to eql('Simple string with <A>tags</A>')
+    end
+
+    it 'defaults when no arg provided for self closing' do
+      pattern = 'Simple string with <A />tags'
+      message = MessageFormat.new(pattern, 'en-US').format()
+
+      expect(message).to eql('Simple string with <A />tags')
+    end
+
     it 'formats nested tags' do 
       pattern = 'Simple string with <A>tags<B>This is nested</B></A>'
       message = MessageFormat.new(pattern, 'en-US').format(
@@ -47,6 +61,17 @@ describe MessageFormat do
       )
 
       expect(message).to eql('Simple string with <a href="https://google.com">tags<b>This is nested</b></a>')
+    end
+
+    it 'formats self closing tags' do 
+      pattern = 'Simple string with <A />'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          A: lambda { '<hr />' }
+        }
+      )
+
+      expect(message).to eql('Simple string with <hr />')
     end
 
     it 'handles pattern with escaped text' do
