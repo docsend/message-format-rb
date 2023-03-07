@@ -12,9 +12,13 @@ describe MessageFormat do
       expect { MessageFormat.new('sub with no selector { a, select, {hi} }') }.to raise_error
       expect { MessageFormat.new('sub with no other { a, select, foo {hi} }') }.to raise_error
       expect { MessageFormat.new('wrong escape \\{') }.to raise_error
-      expect { MessageFormat.new('wrong escape \'{\'', 'en', { escape: '\\' }) }.to raise_error
+      expect { MessageFormat.new("wrong escape \'{\'', 'en', { escape: '\\' }") }.to raise_error
       expect { MessageFormat.new('bad arg type { a, bogus, nope }') }.to raise_error
       expect { MessageFormat.new('bad arg separator { a bogus, nope }') }.to raise_error
+      expect { MessageFormat.new('unclosed tag <a>Tag') }.to raise_error
+      expect { MessageFormat.new('un matching tag </a>Tag') }.to raise_error
+      expect { MessageFormat.new('nested un matching tag <a>Tag</B></a>') }.to raise_error
+      expect { MessageFormat.new('mis matched tags <a>Tag</b>') }.to raise_error
     end
   end
 
@@ -24,6 +28,110 @@ describe MessageFormat do
       message = MessageFormat.new(pattern, 'en-US').format()
 
       expect(message).to eql('Simple string with nothing special')
+    end
+
+    it 'formats tags' do
+      pattern = 'Simple string with <A>tags</A>'
+      message = MessageFormat.new(pattern, 'en-US').format({ A: lambda { |content| "<a href=\"https://google.com\">#{content}</a>" } })
+
+      expect(message).to eql('Simple string with <a href="https://google.com">tags</a>')
+    end
+
+    it 'defaults when no arg provided' do
+      pattern = 'Simple string with <A>tags</A>'
+      message = MessageFormat.new(pattern, 'en-US').format()
+
+      expect(message).to eql('Simple string with <A>tags</A>')
+    end
+
+    it 'defaults when no arg provided for self closing' do
+      pattern = 'Simple string with <A />tags'
+      message = MessageFormat.new(pattern, 'en-US').format()
+
+      expect(message).to eql('Simple string with <A />tags')
+    end
+
+    it 'formats nested tags' do 
+      pattern = 'Simple string with <A>tags<B>This is nested</B></A>'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        { 
+          A: lambda { |content| "<a href=\"https://google.com\">#{content}</a>" },
+          B: lambda { |content| "<b>#{content}</b>" }
+        }
+      )
+
+      expect(message).to eql('Simple string with <a href="https://google.com">tags<b>This is nested</b></a>')
+    end
+
+    it 'formats tags in switch case' do
+      pattern = '{gender, select, male {&lt; hello <b>world</b> {token} &lt;&gt; <a>{placeholder}</a>} female {<b>foo &lt;&gt; bar</b>} other {<b>foo &lt;&gt; bar</b>}}'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        { 
+          gender: 'male',
+          b: lambda { |str| str },
+          token: '<asd>',
+          placeholder: '>',
+          a: lambda { |str| str },
+        }
+      )
+
+      expect(message).to eql('&lt; hello world <asd> &lt;&gt; >')
+
+      message = MessageFormat.new(pattern, 'en-US').format(
+        { 
+          gender: 'female',
+          b: lambda { |str| str }
+        }
+      )
+
+      expect(message).to eql('foo &lt;&gt; bar')
+    end
+
+    it 'deep format nested tag message' do
+      pattern = 'hello <b>world<i>!</i> <br/> </b>'
+
+      message = MessageFormat.new(pattern, 'en-US').format(
+        { 
+          b: lambda { |content| ['<b>', *content, '</b>'] },
+          i: lambda { |content| "$$$#{content}$$$" }
+        }
+      )
+
+      expect(message).to eql('hello <b>world$$$!$$$ <br /> </b>')
+    end
+
+    it 'formats tags in plurals' do
+      pattern = 'You have {count, plural, =1 {<b>1</b> Message} other {<b>#</b> Messages}}'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          b: lambda { |chunks| "{}#{chunks}{}" },
+          count: 1000
+        }
+      )
+
+      expect(message).to eql('You have {}1,000{} Messages')
+    end
+
+    it 'formats self closing tags' do 
+      pattern = 'Simple string with <A />'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          A: lambda { '<hr />' }
+        }
+      )
+
+      expect(message).to eql('Simple string with <hr />')
+    end
+
+    it 'formats correctly with hash' do 
+      pattern = 'Simple string with <A>#</A>'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          A: lambda { |content| "<a>#{content}</a>" }
+        }
+      )
+
+      expect(message).to eql('Simple string with <a>#</a>')
     end
 
     it 'handles pattern with escaped text' do
@@ -42,7 +150,7 @@ describe MessageFormat do
 
     it 'formats numbers, dates, and times' do
       pattern = '{ n, number } : { d, date, short } { d, time, short }'
-      message = MessageFormat.new(pattern, 'en-US').format({ :n => 0, :d => DateTime.new(0) })
+      message = MessageFormat.new(pattern, 'en-US').format({ :n => 0, :d => DateTime.new })
 
       expect(message).to match(/^0 \: \d\d?\/\d\d?\/\d{2,4} \d\d?\:\d\d [AP]M$/)
     end

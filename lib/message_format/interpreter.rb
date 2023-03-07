@@ -18,12 +18,17 @@ module MessageFormat
   class Interpreter
 
     def initialize ( options=nil )
-      if options and options.has_key?(:locale)
+      if options&.has_key?(:locale)
         @locale = options[:locale]
       else
         @locale = TwitterCldr.locale
       end
-      @raise_on_missing_params = options[:raise_on_missing_params]
+
+      if options&.has_key?(:raise_on_missing_params)
+        @raise_on_missing_params = options[:raise_on_missing_params]
+      else
+        @raise_on_missing_params = false
+      end
     end
 
     #
@@ -48,10 +53,12 @@ module MessageFormat
 
     def interpret ( elements )
       @missing_ids = []
-      interpret_subs(elements)
+      interpreted_value = interpret_subs(elements)
       if @raise_on_missing_params && !@missing_ids.empty?
         raise MissingParametersError.new('Missing parameters detected during interpretation', @missing_ids.compact)
       end
+
+      interpreted_value
     end
 
     def interpret_subs ( elements, parent=nil )
@@ -87,6 +94,10 @@ module MessageFormat
       id = id.to_sym # actual arguments should always be keyed by symbols
 
       case type
+        when 'tag'
+          interpret_tag(id, type, style[0], style[1], parent)
+        when 'self-closing-tag'
+          interpret_self_closing_tag(id, style[0])
         when 'number'
           interpret_number(id, offset, style)
         when 'date', 'time'
@@ -101,6 +112,52 @@ module MessageFormat
           interpret_number(id, offset, type)
         else
           interpret_simple(id)
+      end
+    end
+
+    def interpret_tag ( id, type, attributes, elements, parent )
+      elements = elements.map do |element|
+        interpret_element(element, parent)
+      end
+
+      lambda do |args|
+        args ||= {}
+
+        unless args[id]
+          args[id] = lambda do |content|
+            result = "<#{id}"
+            result += " #{attributes}" unless attributes.empty?
+            result += ">#{content}</#{id}>"
+            result
+          end
+        end
+
+        if elements.length == 1
+          return args[id].call(elements[0].call(args))
+        end
+
+        args[id].call(
+          (lambda do |nested|
+            elements.map { |element| element.call(nested) }.join ''
+          end).call(args)
+        )
+      end
+    end
+
+    def interpret_self_closing_tag (id, attributes)
+      lambda do |args|
+        args ||= {}
+
+        unless args[id]
+          args[id] = lambda do
+            result = "<#{id}"
+            result += " #{attributes}" unless attributes.empty?
+            result += ' />'
+            result
+          end
+        end
+
+        args[id].call
       end
     end
 

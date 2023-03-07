@@ -75,6 +75,8 @@ module MessageFormat
         if (
           char == '{' or
           char == '}' or
+          char == '<' or
+          char == '>' or
           (is_hash_special and char == '#') or
           (is_arg_style and is_whitespace(char))
         )
@@ -119,10 +121,72 @@ module MessageFormat
       text
     end
 
-    def parse_argument ()
+    def parse_tag ( parent_type )
+      @index += 1
+  
+      id = parse_arg_id
+      elements = []
+  
+      count = 0
+      while @index < @length && @pattern[@index] != '>'
+        if @pattern[@index] == '/' && @pattern[@index + 1] == '>'
+          tag_attributes = @pattern[@index - count..@index - 1]
+          @index += 2
+          return [id, 'self-closing-tag', [tag_attributes]]
+        end
+  
+        @index += 1
+        count += 1
+      end
+  
+      if @index == @length
+        raise_expected('>')
+      end
+      # Don't include closing tag
+      tag_attributes = @pattern[@index - count..@index - 1]
+  
+      @index += 1
+
+      while @index < @length
+        if @pattern[@index] == '<' && @pattern[@index + 1] == '/'
+          @index += 2
+          close_tag = parse_arg_id
+          if close_tag != id
+            raise_expected(id, close_tag, 'Mismatched opening and closing tags')
+          end
+
+          @index += id.length
+          break
+        end
+        text = parse_text(parent_type)
+        if !text.empty?
+          elements.push(text)
+        end
+        if @pattern[@index] == '<' && @pattern[@index + 1] == '/'
+          @index += 2
+          close_tag = parse_arg_id
+          if close_tag != id
+            raise_expected(id, close_tag, 'Mismatched opening and closing tags')
+          end
+          @index += id.length
+          break
+        end
+        elements.push(parse_argument(parent_type))
+      end
+  
+      [id, 'tag', [tag_attributes, elements]]
+    end
+
+    def parse_argument (parent_type)
       if @pattern[@index] == '#'
         @index += 1 # move passed #
         return [ '#' ]
+      end
+
+      if @pattern[@index] == '<'
+        tag = parse_tag(parent_type)
+
+        return tag
       end
 
       @index += 1 # move passed {
@@ -184,7 +248,7 @@ module MessageFormat
         if char == '{' or char == '#'
           raise_expected('argument id')
         end
-        if char == '}' or char == ',' or is_whitespace(char)
+        if char == '}' or char == ',' or char == '>' or char == '/' or is_whitespace(char)
           break
         end
         id += char
@@ -320,7 +384,7 @@ module MessageFormat
           end
           break
         end
-        elements.push(parse_argument())
+        elements.push(parse_argument(parent_type))
         text = parse_text(parent_type)
         if !text.empty?
           elements.push(text)
