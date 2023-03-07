@@ -121,9 +121,7 @@ module MessageFormat
       end
 
       lambda do |args|
-        unless args
-          args = {}
-        end
+        args ||= {}
 
         unless args[id]
           args[id] = lambda do |content|
@@ -148,9 +146,7 @@ module MessageFormat
 
     def interpret_self_closing_tag (id, attributes)
       lambda do |args|
-        unless args
-          args = {}
-        end
+        args ||= {}
 
         unless args[id]
           args[id] = lambda do
@@ -246,7 +242,7 @@ module MessageFormat
     def interpret_simple ( id )
       lambda do |args|
         @missing_ids.push(id) unless args.key?(id)
-        args[id].to_s
+        CGI.escapeHTML(args[id].to_s)
       end
     end
 
