@@ -63,18 +63,6 @@ describe MessageFormat do
       expect(message).to eql('Simple string with <a href="https://google.com">tags<b>This is nested</b></a>')
     end
 
-    it 'prevents xss' do
-      pattern = 'My Template <a>{user_content}</a>'
-      message = MessageFormat.new(pattern, 'en-US').format(
-        {
-          a: lambda { |content| content },
-          user_content: "<script>alert('i am evil');</script>"
-        }
-      )
-
-      expect(message).to eql('My Template &lt;script&gt;alert(&#39;i am evil&#39;);&lt;/script&gt;')
-    end
-
     it 'formats tags in switch case' do
       pattern = '{gender, select, male {&lt; hello <b>world</b> {token} &lt;&gt; <a>{placeholder}</a>} female {<b>foo &lt;&gt; bar</b>} other {<b>foo &lt;&gt; bar</b>}}'
       message = MessageFormat.new(pattern, 'en-US').format(
@@ -87,7 +75,7 @@ describe MessageFormat do
         }
       )
 
-      expect(message).to eql('&lt; hello world &lt;asd&gt; &lt;&gt; &gt;')
+      expect(message).to eql('&lt; hello world <asd> &lt;&gt; >')
 
       message = MessageFormat.new(pattern, 'en-US').format(
         { 

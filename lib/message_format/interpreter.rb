@@ -242,7 +242,7 @@ module MessageFormat
     def interpret_simple ( id )
       lambda do |args|
         @missing_ids.push(id) unless args.key?(id)
-        CGI.escapeHTML(args[id].to_s)
+        args[id].to_s
       end
     end
 
