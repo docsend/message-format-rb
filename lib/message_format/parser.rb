@@ -121,7 +121,7 @@ module MessageFormat
       text
     end
 
-    def parse_tag
+    def parse_tag ( parent_type )
       @index += 1
   
       id = parse_arg_id
@@ -158,7 +158,7 @@ module MessageFormat
           @index += id.length
           break
         end
-        text = parse_text('tag')
+        text = parse_text(parent_type)
         if !text.empty?
           elements.push(text)
         end
@@ -171,20 +171,20 @@ module MessageFormat
           @index += id.length
           break
         end
-        elements.push(parse_argument)
+        elements.push(parse_argument(parent_type))
       end
   
       [id, 'tag', [tag_attributes, elements]]
     end
 
-    def parse_argument ()
+    def parse_argument (parent_type)
       if @pattern[@index] == '#'
         @index += 1 # move passed #
         return [ '#' ]
       end
 
       if @pattern[@index] == '<'
-        tag = parse_tag()
+        tag = parse_tag(parent_type)
 
         return tag
       end
@@ -248,7 +248,7 @@ module MessageFormat
         if char == '{' or char == '#'
           raise_expected('argument id')
         end
-        if char == '}' or char == ',' or char == '>' or is_whitespace(char)
+        if char == '}' or char == ',' or char == '>' or char == '/' or is_whitespace(char)
           break
         end
         id += char
@@ -384,7 +384,7 @@ module MessageFormat
           end
           break
         end
-        elements.push(parse_argument())
+        elements.push(parse_argument(parent_type))
         text = parse_text(parent_type)
         if !text.empty?
           elements.push(text)
