@@ -155,7 +155,7 @@ module MessageFormat
             raise_expected(id, close_tag, 'Mismatched opening and closing tags')
           end
 
-          @index += id.length
+          @index += 1
           break
         end
         text = parse_text(parent_type)
@@ -168,7 +168,8 @@ module MessageFormat
           if close_tag != id
             raise_expected(id, close_tag, 'Mismatched opening and closing tags')
           end
-          @index += id.length
+
+          @index += 1
           break
         end
         elements.push(parse_argument(parent_type))
