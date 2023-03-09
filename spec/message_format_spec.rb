@@ -134,6 +134,17 @@ describe MessageFormat do
       expect(message).to eql('Simple string with <a>#</a>')
     end
 
+    it 'formats longer tag names correctly' do
+      pattern = 'Long tag name with content after <SPAN>test</SPAN> more content here'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          SPAN: lambda { |content| "<span class=\"hidden-xs-down\">#{content}</span>" }
+        }
+      )
+
+      expect(message).to eql('Long tag name with content after <span class="hidden-xs-down">test</span> more content here')
+    end
+
     it 'handles pattern with escaped text' do
       pattern = 'This isn\'\'t a \'{\'\'simple\'\'}\' \'string\''
       message = MessageFormat.new(pattern, 'en-US').format()
