@@ -112,7 +112,7 @@ describe MessageFormat do
       expect(message).to eql('You have {}1,000{} Messages')
     end
 
-    it 'formats self closing tags' do 
+    it 'formats self closing tags' do
       pattern = 'Simple string with <A />'
       message = MessageFormat.new(pattern, 'en-US').format(
         {
@@ -123,7 +123,7 @@ describe MessageFormat do
       expect(message).to eql('Simple string with <hr />')
     end
 
-    it 'formats correctly with hash' do 
+    it 'formats correctly with hash' do
       pattern = 'Simple string with <A>#</A>'
       message = MessageFormat.new(pattern, 'en-US').format(
         {
@@ -143,6 +143,17 @@ describe MessageFormat do
       )
 
       expect(message).to eql('Long tag name with content after <span class="hidden-xs-down">test</span> more content here')
+    end
+
+    it 'formats tag with > in text' do
+      pattern = '<ContentOptionsLink>Settings > Content Options.</ContentOptionsLink>'
+      message = MessageFormat.new(pattern, 'en-US').format(
+        {
+          ContentOptionsLink: lambda { |content| "<a href=\"https://google.com\">#{content}</a>" }
+        }
+      )
+
+      expect(message).to eql('<a href="https://google.com">Settings > Content Options.</a>')
     end
 
     it 'handles pattern with escaped text' do

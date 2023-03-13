@@ -76,7 +76,6 @@ module MessageFormat
           char == '{' or
           char == '}' or
           char == '<' or
-          char == '>' or
           (is_hash_special and char == '#') or
           (is_arg_style and is_whitespace(char))
         )
